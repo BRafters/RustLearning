@@ -11,3 +11,4 @@ Cargo.lock
 
 # Remove IntelliJ stuffs
 *.idea
+*.DS_Store
