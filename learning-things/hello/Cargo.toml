@@ -1,0 +1,11 @@
+[package]
+name = "hello" # Name of project
+version = "0.1.0" # Version of project 
+authors = ["Brennan Rafters"] # Cargo will search a bunch of places for your name and email ie: Global git config
+edition = "2021"
+
+# Cargo compiles your project with debug symbols by default
+# --release to compile without debug symbols
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
