@@ -26,6 +26,7 @@ fn closure_borrowing() {
 
     // Closures also support move semantics, so we can force the closure to move any varaibles it uses into itself and take ownership of them
     // 's' will become part of the closure and it will live until the closure itself goes out of scope and gets dropped
+    // This ensures that the closure has exclusive access to their values
     let f = move || {
         println!("{}", s);
     };
