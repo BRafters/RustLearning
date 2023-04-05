@@ -1,7 +1,10 @@
+// The absolute path is the library name, which is the same as the name of your project in Cargo.toml
+// Followed by the scope operator '::'
+// Then the name of the function ie: greet
+use hello::greet; // Since the use statement is outside of any smaller scope, this brings greet() into scope for all of main
+use rand::{Rng, thread_rng};
 
-use hello::greet;
-// Use brings an item from some path into some scope 
-use lib::greet;
+// The standard library is always available by default 
 
 fn main() {
     // Let for declaring vars
@@ -22,5 +25,11 @@ fn main() {
     // Really fast
     const WARP_FACTOR: f32 = 9.09;
 
-    greet();
+    greet(); // Can omit the library name and just use the function name
+    println!("{}", generate_random());
+}
+
+fn generate_random() -> i8 {
+    let x: i8 = thread_rng().gen_range(0, 100);
+    x
 }
