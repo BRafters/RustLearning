@@ -10,7 +10,7 @@ fn main() {
     // You can use a pattern to destructure and access all the elements of a tuple
     // Tuples have a maximum arity of twelve (at least with full functionality)
     // Arity = how many items are in the tuple
-    let (cars, fuel, km) = info; // Arity of 4
+    let (cars, fuel, km) = info; // Arity of 3
 
     // An array
     let arr_one = [1,2,3];
