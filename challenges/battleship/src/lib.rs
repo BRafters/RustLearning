@@ -1,14 +1,18 @@
 #![allow(unused_variables)]
 
 use regex::Regex;
+use core::num;
 use std::collections::hash_map::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::sync::Mutex;
 
+// A good way to check if there are battleship hits left is to count how many there are
+
 lazy_static::lazy_static! {
     static ref GAME_MAP: Mutex<HashMap<char, [u8; 10]>> = Mutex::new(HashMap::new());
     static ref PLOT_MAP: Mutex<HashMap<char, [char; 10]>> = Mutex::new(HashMap::new());
+
     static ref RGX_NUM: Regex = Regex::new(r#"[A-Z]"#).unwrap();
     static ref RGX_LETTER: Regex = Regex::new(r#"[\d]+"#).unwrap();
     static ref RGX_INVALID_CHARS: Regex = Regex::new(r"^[A-J]([\d]{1,2})$").unwrap();
@@ -69,20 +73,32 @@ pub fn play() {
 
     loop {
         let line: String = String::new();
+        shoot();
         show_map();
     }
 }
 
 fn shoot() -> String {
     let mut line: String = String::new();
+    let mut formatted_str: String;
 
     println!("Where would you like to shoot?");
-    std::io::stdin()
-        .read_line(&mut line)
-        .expect("Could not get input");
 
-    // Remove whitespace
-    line.replace(" ", "").to_uppercase()
+    // If the input is invalid, we ask again
+    loop {
+        std::io::stdin()
+            .read_line(&mut line)
+            .expect("Could not get input");
+
+        formatted_str = line.replace(" ", "").to_uppercase();
+
+        // Remove whitespace and validate the input
+        if is_valid_coord(&formatted_str) {
+            return formatted_str;
+        }
+        
+        println!("Invalid input, please try again");
+    }
 }
 
 fn str_to_coord(string_coord: String) -> (char, u8) {
@@ -172,16 +188,22 @@ pub enum Coords {
 ////
 // Other non map related utilities
 ////
-fn is_valid_coord(user_input: String) -> bool {
+fn is_valid_coord(user_input: &String) -> bool {
     // If the input contains special chars, just say no
-    if !RGX_INVALID_CHARS.is_match(&user_input) {
+    if !RGX_INVALID_CHARS.is_match(user_input) {
         return false;
     }
-    
-    // Pull out the numeric value
-    let num_str: String = RGX_NUM.split(&user_input).collect();
 
-    if num_str.parse::<u8>().unwrap() > 10 {
+    // Pull out the numeric value
+    let num_str: String = RGX_NUM.split(user_input).collect();
+    
+    if num_str.is_empty() || !num_str.chars().all(char::is_numeric) {
+        return false;
+    }
+
+    let num: u8 = num_str.parse::<u8>().expect("Could not parse numeric str to u8");
+
+    if num > 10 {
         return false;
     }
 
@@ -203,54 +225,67 @@ fn test_str_to_coord() {
 fn test_valid_string() {
     let str: String = String::from("F10");
 
-    assert!(is_valid_coord(str));
+    assert!(is_valid_coord(&str));
 }
 
 #[test]
 fn test_one_num() {
     let str: String = String::from("F1");
 
-    assert!(is_valid_coord(str));
+    assert!(is_valid_coord(&str));
 }
 
 #[test]
 fn test_three_nums() {
     let str: String = String::from("F100");
 
-    assert!(!is_valid_coord(str));
+    assert!(!is_valid_coord(&str));
 }
 
 #[test]
 fn test_no_nums() {
     let str: String = String::from("F");
 
-    assert!(!is_valid_coord(str));
+    assert!(!is_valid_coord(&str));
 }
 
 #[test]
 fn test_num_out_of_range() {
     let str: String = String::from("F12");
 
-    assert!(!is_valid_coord(str));
+    assert!(!is_valid_coord(&str));
 }
 
 #[test]
 fn test_two_chars() {
     let str: String = String::from("FF1");
 
-    assert!(!is_valid_coord(str));
+    assert!(!is_valid_coord(&str));
 }
 
 #[test]
 fn test_no_chars() {
     let str: String = String::from("1");
 
-    assert!(!is_valid_coord(str));
+    assert!(!is_valid_coord(&str));
+}
+
+#[test]
+fn test_chars_empty() {
+    let str: String = String::from("");
+
+    assert!(!is_valid_coord(&str));
+}
+
+#[test]
+fn test_two_alphas() {
+    let str: String = String::from("FF");
+    assert!(!is_valid_coord(&str));
 }
 
 #[test]
 fn test_past_j() {
     let str: String = String::from("K1");
 
-    assert!(!is_valid_coord(str));
+    assert!(!is_valid_coord(&str));
 }
