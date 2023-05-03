@@ -1,7 +1,6 @@
 #![allow(unused_variables)]
 
 use regex::Regex;
-use core::num;
 use std::collections::hash_map::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -10,6 +9,7 @@ use std::sync::Mutex;
 // A good way to check if there are battleship hits left is to count how many there are
 
 lazy_static::lazy_static! {
+    static ref NUM_OF_HITS: Mutex<u8> = Mutex::new(0);
     static ref GAME_MAP: Mutex<HashMap<char, [u8; 10]>> = Mutex::new(HashMap::new());
     static ref PLOT_MAP: Mutex<HashMap<char, [char; 10]>> = Mutex::new(HashMap::new());
 
@@ -30,32 +30,35 @@ pub fn init() {
         .read_to_string(&mut content)
         .expect("Could not read file");
 
-    // println!("{}", content);
-
     let mut map = GAME_MAP.lock().unwrap();
+    let mut num_of_hits = NUM_OF_HITS.lock().unwrap();
     let mut arr: [u8; 10] = [0; 10];
     let mut i = 0;
     let mut j = 0;
 
-    // TODO - For every tenth character, we set j back to 0 and bump up i by one
+
     // Read every character
+    // Breaks out before we check j with arr.len()
     for ch in content.chars() {
         let int_ch: u8 = match ch {
             '0' => 0_u8,
-            '1' => 1_u8,
-            _ => continue,
+            '1' => {
+                *num_of_hits += 1;
+                1_u8
+            },
+            _ => continue
         };
 
-        // Do the check before we insert into map
+        // Insert into array then inc j by one
+        arr[j] = int_ch;
+        j += 1;
+
+        // If hit size 10 with j, we can go to the next row to work on
         if j == arr.len() {
             map.insert(Y_AXIS[i], arr);
             i += 1;
             j = 0;
-        } else {
-            arr[j] = int_ch;
-        }
-
-        j += 1;
+        } 
     }
 
     let mut plot_map = PLOT_MAP.lock().unwrap();
@@ -72,8 +75,22 @@ pub fn play() {
     println!("2: To fire, choose spot you want to shoot at ie: G10");
 
     loop {
-        let line: String = String::new();
-        shoot();
+        let line: String = shoot();
+        if game_is_won() {
+            println!("Congratulations! You have sunk all battleships!");
+            return;
+        }
+
+        if is_quitting(&line) {
+            return;
+        }
+
+        // Get the coord
+        let coord: Coords = Coords::Coord(str_to_coord(line));
+
+        // Pass the coord over to the place method
+        place(&coord);
+
         show_map();
     }
 }
@@ -90,13 +107,15 @@ fn shoot() -> String {
             .read_line(&mut line)
             .expect("Could not get input");
 
-        formatted_str = line.replace(" ", "").to_uppercase();
+        println!("{}", line);
+
+        formatted_str = line.replace(" ", "").replace("\n", "").to_uppercase();
 
         // Remove whitespace and validate the input
         if is_valid_coord(&formatted_str) {
             return formatted_str;
         }
-        
+
         println!("Invalid input, please try again");
     }
 }
@@ -155,10 +174,10 @@ fn hit_marker(coord: &Coords) -> char {
 
     if arr[x_point] == 1 {
         println!("Hit!");
-        'x'
+        'X'
     } else {
         println!("Miss!");
-        'o'
+        'O'
     }
 }
 
@@ -180,6 +199,10 @@ fn x_to_element(x: u8) -> u8 {
     }
 }
 
+fn is_quitting(user_input: &String) -> bool {
+    user_input.to_uppercase() == "Q"
+}
+
 pub enum Coords {
     Coord((char, u8)),
     None,
@@ -189,6 +212,11 @@ pub enum Coords {
 // Other non map related utilities
 ////
 fn is_valid_coord(user_input: &String) -> bool {
+    // Check if the user wants to quit
+    if is_quitting(user_input) {
+        return true;
+    }
+
     // If the input contains special chars, just say no
     if !RGX_INVALID_CHARS.is_match(user_input) {
         return false;
@@ -196,18 +224,24 @@ fn is_valid_coord(user_input: &String) -> bool {
 
     // Pull out the numeric value
     let num_str: String = RGX_NUM.split(user_input).collect();
-    
+
     if num_str.is_empty() || !num_str.chars().all(char::is_numeric) {
         return false;
     }
 
-    let num: u8 = num_str.parse::<u8>().expect("Could not parse numeric str to u8");
+    let num: u8 = num_str
+        .parse::<u8>()
+        .expect("Could not parse numeric str to u8");
 
     if num > 10 {
         return false;
     }
 
     true
+}
+
+fn game_is_won() -> bool {
+    *NUM_OF_HITS.lock().unwrap() == 0
 }
 
 ////
@@ -240,6 +274,15 @@ fn test_three_nums() {
     let str: String = String::from("F100");
 
     assert!(!is_valid_coord(&str));
+}
+
+#[test]
+fn test_quit() {
+    let str: String = String::from("q");
+    let str_two: String = String::from("Q");
+
+    assert!(is_valid_coord(&str));
+    assert!(is_valid_coord(&str_two));
 }
 
 #[test]
@@ -289,3 +332,25 @@ fn test_past_j() {
 
     assert!(!is_valid_coord(&str));
 }
+
+#[test]
+fn test_num_of_hits() {
+    init();
+    let actual_result: u8 = *NUM_OF_HITS.lock().unwrap();
+
+    println!("Remaining hits: {}", actual_result);
+    assert_eq!(actual_result, 17);
+}
+
+#[test]
+fn test_if_game_won() {
+    init();
+
+    // We would have 17 after init
+    assert!(!game_is_won());
+
+    // Set to 0 and assert again
+    *NUM_OF_HITS.lock().unwrap() = 0;
+    assert!(game_is_won());
+}
+
