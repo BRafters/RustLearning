@@ -85,12 +85,6 @@ pub fn play() {
             return;
         }
 
-        // Get the coord
-        let coord: Coords = Coords::Coord(str_to_coord(line));
-
-        // Pass the coord over to the place method
-        place(&coord);
-
         show_map();
     }
 }
@@ -107,12 +101,20 @@ fn shoot() -> String {
             .read_line(&mut line)
             .expect("Could not get input");
 
-        println!("{}", line);
-
         formatted_str = line.replace(" ", "").replace("\n", "").to_uppercase();
+
+        if is_quitting(&formatted_str){
+            return formatted_str;
+        }
 
         // Remove whitespace and validate the input
         if is_valid_coord(&formatted_str) {
+            // Get the coord
+            let coords = Coords::Coord(str_to_coord(&formatted_str));
+
+            // Pass the coord over to the place method
+            place(&coords);
+
             return formatted_str;
         }
 
@@ -120,10 +122,10 @@ fn shoot() -> String {
     }
 }
 
-fn str_to_coord(string_coord: String) -> (char, u8) {
+fn str_to_coord(string_coord: &String) -> (char, u8) {
     // Split will return what hasn't matched
-    let num: String = RGX_NUM.split(&string_coord).collect();
-    let letter: String = RGX_LETTER.split(&string_coord).collect();
+    let num: String = RGX_NUM.split(string_coord).collect();
+    let letter: String = RGX_LETTER.split(string_coord).collect();
 
     // Get the first char, and the u8 and put them in the tuple
     (letter.chars().nth(0).unwrap(), num.parse::<u8>().unwrap())
@@ -159,6 +161,7 @@ pub fn place(coord: &Coords) {
     // First, plot on the map
     if let Some(values) = map.get_mut(&point.0) {
         values[x_point] = hit_marker(coord);
+        make_hit(values[x_point]);
     }
 }
 
@@ -178,6 +181,13 @@ fn hit_marker(coord: &Coords) -> char {
     } else {
         println!("Miss!");
         'O'
+    }
+}
+
+fn make_hit(ch: char) {
+    if ch == 'X' {
+        let mut hit_counter = NUM_OF_HITS.lock().unwrap();
+        *hit_counter -= 1;
     }
 }
 
@@ -252,7 +262,7 @@ fn test_str_to_coord() {
     let str: String = String::from("G10");
     let expected_coord: (char, u8) = ('G', 10);
 
-    assert_eq!(str_to_coord(str), expected_coord);
+    assert_eq!(str_to_coord(&str), expected_coord);
 }
 
 #[test]
